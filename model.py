@@ -22,12 +22,12 @@ class SignalEmbedding(nn.Module):
         self.num_patches = seq_length // patch_size
 
         self.proj = nn.Linear(patch_size, embed_dim)  # 线性投影层
-        # self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))  # 类token（3维：适应批次输入）
-        # self.pos_embed = nn.Parameter(torch.randn(1, self.num_patches + 1, embed_dim))
-        pos_embed = position_embedding(self.num_patches, embed_dim)  # 计算正弦位置编码
-        self.register_buffer('pos_embed', pos_embed)  # 注册为buffer，不会被优化器更新
+        self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))  # 类token（3维：适应批次输入）
+        self.pos_embed = nn.Parameter(torch.randn(1, self.num_patches + 1, embed_dim))
+        # pos_embed = position_embedding(self.num_patches + 1, embed_dim)  # 计算正弦位置编码
+        # self.register_buffer('pos_embed', pos_embed)  # 注册为buffer，不会被优化器更新
 
-        # nn.init.trunc_normal_(self.cls_token, std=0.02)
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
     
     def forward(self, x):
         x = x[:, :, 0]  # 选择第三列作为信号数据
@@ -35,8 +35,8 @@ class SignalEmbedding(nn.Module):
         batch_size = x.shape[0]
         patches = x.unfold(1, self.patch_size, self.patch_size)
         embeddings = self.proj(patches)  # (batch_size, num_patches, embed_dim)
-        # cls_tokens = self.cls_token.repeat(batch_size, 1, 1)
-        # embeddings = torch.cat((cls_tokens, embeddings), dim=1)
+        cls_tokens = self.cls_token.repeat(batch_size, 1, 1)
+        embeddings = torch.cat((cls_tokens, embeddings), dim=1)
         embeddings += self.pos_embed
         return embeddings
 
@@ -54,7 +54,13 @@ class TransformerBlock(nn.Module):
         self.layer_norm2 = nn.LayerNorm(embed_dim)
     
     def forward(self, x):
+        print(x.shape)
+        print(x[:, 0, :])
+        print(x[:, 1, :])
         attn_output, _ = self.self_attn(x, x, x)
+        print(x[:, 0, :])
+        print(x[:, 1, :])
+        breakpoint()
         x = self.layer_norm1(x + attn_output)
         ff_output = self.feed_forward(x)
         x = self.layer_norm2(x + ff_output)
@@ -141,8 +147,8 @@ class DiagnosticsModel(nn.Module):
         for block in self.transformer_blocks:
             embeddings = block(embeddings)
         # embeddings = self.transferable_transformer_blocks(embeddings)
-        # cls_tokens = embeddings[:, 0, :]
-        cls_tokens = embeddings.mean(dim = 1)
+        cls_tokens = embeddings[:, 0, :]
+        # cls_tokens = embeddings.mean(dim = 1)
         # domain_pred = self.domain_discriminator(cls_tokens)
         class_pred = self.classifier(cls_tokens)
         if return_features:
