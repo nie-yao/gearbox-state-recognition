@@ -21,9 +21,14 @@ def train(model, train_loader, criterion, optimizer, epoch, device):
         total += target.size(0)
         correct += (predicted == target).sum().item()
         total_loss += loss.item()
-        if batch_idx % 100 == 0:
-            print(f'[Train] Epoch: {epoch+1}, Batch: {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {100. * correct / total:.2f}%')
-    print(f'[Train] Epoch: {epoch+1}, Average Loss: {total_loss / len(train_loader):.4f}, Accuracy: {100. * correct / total:.2f}%')
+        if (batch_idx + 1) % 100 == 0:
+            print(f'[Train] Epoch: {epoch+1}, Batch: {batch_idx+1}, Loss: {loss.item():.4f}, Accuracy: {100. * correct / total:.2f}%')
+    
+    avg_loss = total_loss / len(train_loader)
+    accuracy = 100. * correct / total
+    print(f'[Train] Epoch: {epoch+1}, Average Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%')
+
+    return avg_loss
 
 
 def test(model, test_loader, criterion, epoch, device):
@@ -39,11 +44,15 @@ def test(model, test_loader, criterion, epoch, device):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device).long()  # Ensure target is of type long
             class_pred = model(data)
+            # print(class_pred)
             loss = criterion(class_pred, target)
             _, predicted = torch.max(class_pred, 1)
             total += target.size(0)
             correct += (predicted == target).sum().item()
             total_loss += loss.item()
-    print(f'[Test] Epoch: {epoch+1}, Average Loss: {total_loss / len(test_loader):.4f}, Accuracy: {100. * correct / total:.2f}%')
+    
+    avg_loss = total_loss / len(test_loader)
+    accuracy = 100. * correct / total
+    print(f'[Test] Epoch: {epoch+1}, Average Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%')
 
-    return 100. * correct / total  # Return the accuracy for potential use in saving the best model
+    return avg_loss, accuracy  # Return the accuracy for potential use in saving the best model
